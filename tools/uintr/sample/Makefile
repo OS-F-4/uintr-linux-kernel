@@ -1,4 +1,5 @@
-CC		= $(CROSS_COMPILE)gcc
+# CC		= $(CROSS_COMPILE)gcc
+CC = gcc-11
 BUILD_OUTPUT	:= $(CURDIR)
 PREFIX		?= /usr
 DESTDIR		?=
