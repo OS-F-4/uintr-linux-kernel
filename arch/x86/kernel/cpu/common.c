@@ -324,18 +324,21 @@ static __init int setup_disable_uintr(char *arg)
 }
 __setup("nouintr", setup_disable_uintr);
 
-static __always_inline void setup_uintr(struct cpuinfo_x86 *c)
+static __always_inline void setup_uintr(struct cpuinfo_x86 *c) // 初始化用户态中断,改？？？
 {
 	/* check the boot processor, plus compile options for UINTR. */
 	if (!cpu_feature_enabled(X86_FEATURE_UINTR))
+		printk("at setup uintr cpu featrue not enabled\n");
 		goto disable_uintr;
 
 	/* checks the current processor's cpuid bits: */
 	if (!cpu_has(c, X86_FEATURE_UINTR))
+		printk("at setup uintr cpu has not enabled\n");
 		goto disable_uintr;
 
 	/* Confirm XSAVE support for UINTR is present. */
 	if (!cpu_has_xfeatures(XFEATURE_MASK_UINTR, NULL)) {
+		printk("at setup uintr XSAVE not enabled\n");
 		pr_info_once("x86: User Interrupts (UINTR) not enabled. XSAVE support for UINTR is missing.\n");
 		goto clear_uintr_cap;
 	}

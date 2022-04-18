@@ -60,16 +60,14 @@ int main(int argc, char *argv[])
 	pthread_t pt;
 	int ret;
 
-	if (uintr_register_handler(uintr_handler, 0)) {
-		printf("Interrupt handler register error\n");
-		exit(EXIT_FAILURE);
-	}
+	int ret1 = uintr_register_handler(uintr_handler, 0);
+       	
+	printf("regeister returned %d\n",ret1);
+		// exit(EXIT_FAILURE);
 
 	ret = uintr_create_fd(0, 0);
-	if (ret < 0) {
-		printf("Interrupt vector allocation error\n");
-		exit(EXIT_FAILURE);
-	}
+	printf("create fd returned %d\n",ret);
+		// exit(EXIT_FAILURE);
 
 	uintr_fd = ret;
 

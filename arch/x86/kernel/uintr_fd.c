@@ -12,6 +12,7 @@
 #include <linux/syscalls.h>
 
 #include <asm/uintr.h>
+static bool Debug = true;
 
 struct uintrfd_ctx {
 	struct uintr_receiver_info *r_info;
@@ -35,7 +36,9 @@ static int uintrfd_release(struct inode *inode, struct file *file)
 	struct uintrfd_ctx *uintrfd_ctx = file->private_data;
 	struct uintr_sender_info *s_info, *tmp;
 	unsigned long flags;
-
+	if(Debug)printk("recv: Release uintrfd for r_task %d uvec %llu\n",
+		 uintrfd_ctx->r_info->upid_ctx->task->pid,
+		 uintrfd_ctx->r_info->uvec);
 	pr_debug("recv: Release uintrfd for r_task %d uvec %llu\n",
 		 uintrfd_ctx->r_info->upid_ctx->task->pid,
 		 uintrfd_ctx->r_info->uvec);
@@ -66,6 +69,7 @@ static const struct file_operations uintrfd_fops = {
  */
 SYSCALL_DEFINE2(uintr_create_fd, u64, vector, unsigned int, flags)
 {
+	if (Debug)printk("uintr_create_fd called\n");
 	struct uintrfd_ctx *uintrfd_ctx;
 	int uintrfd;
 	int ret;
@@ -105,6 +109,8 @@ SYSCALL_DEFINE2(uintr_create_fd, u64, vector, unsigned int, flags)
 		ret = uintrfd;
 		goto out_free_uvec;
 	}
+	if(Debug)printk("recv: Alloc vector success uintrfd %d uvec %llu for task=%d\n",
+		 uintrfd, uintrfd_ctx->r_info->uvec, current->pid);
 
 	pr_debug("recv: Alloc vector success uintrfd %d uvec %llu for task=%d\n",
 		 uintrfd, uintrfd_ctx->r_info->uvec, current->pid);
@@ -115,6 +121,8 @@ out_free_uvec:
 	do_uintr_unregister_vector(uintrfd_ctx->r_info);
 out_free_ctx:
 	kfree(uintrfd_ctx);
+	if(Debug)printk("recv: Alloc vector failed for task=%d ret %d\n",
+		 current->pid, ret);
 	pr_debug("recv: Alloc vector failed for task=%d ret %d\n",
 		 current->pid, ret);
 	return ret;
@@ -124,7 +132,8 @@ out_free_ctx:
  * sys_uintr_register_handler - setup user interrupt handler for receiver.
  */
 SYSCALL_DEFINE2(uintr_register_handler, u64 __user *, handler, unsigned int, flags)
-{
+{	
+	if (Debug) printk("uintr_register_handler called\n");
 	int ret;
 
 	if (!uintr_arch_enabled())
@@ -138,7 +147,7 @@ SYSCALL_DEFINE2(uintr_register_handler, u64 __user *, handler, unsigned int, fla
 		return -EFAULT;
 
 	ret = do_uintr_register_handler((u64)handler);
-
+	if(Debug) printk("recv: register handler task=%d flags %d handler %lx ret %d\n",current->pid, flags, (unsigned long)handler, ret);
 	pr_debug("recv: register handler task=%d flags %d handler %lx ret %d\n",
 		 current->pid, flags, (unsigned long)handler, ret);
 
@@ -150,6 +159,7 @@ SYSCALL_DEFINE2(uintr_register_handler, u64 __user *, handler, unsigned int, fla
  */
 SYSCALL_DEFINE1(uintr_unregister_handler, unsigned int, flags)
 {
+	if (Debug) printk("uintr_unregister_handler called\n");
 	int ret;
 
 	if (!uintr_arch_enabled())
@@ -159,7 +169,8 @@ SYSCALL_DEFINE1(uintr_unregister_handler, unsigned int, flags)
 		return -EINVAL;
 
 	ret = do_uintr_unregister_handler();
-
+	if(Debug) printk("recv: unregister handler task=%d flags %d ret %d\n",
+		 current->pid, flags, ret);
 	pr_debug("recv: unregister handler task=%d flags %d ret %d\n",
 		 current->pid, flags, ret);
 
@@ -171,6 +182,7 @@ SYSCALL_DEFINE1(uintr_unregister_handler, unsigned int, flags)
  */
 SYSCALL_DEFINE2(uintr_register_sender, int, uintrfd, unsigned int, flags)
 {
+	if (Debug) printk("uintr_register_sender called\n");
 	struct uintr_sender_info *s_info;
 	struct uintrfd_ctx *uintrfd_ctx;
 	unsigned long lock_flags;
@@ -227,6 +239,8 @@ SYSCALL_DEFINE2(uintr_register_sender, int, uintrfd, unsigned int, flags)
 	ret = s_info->uitt_index;
 
 out_fdput:
+	if(Debug)printk("send: register sender task=%d flags %d ret(uipi_id)=%d\n",
+		 current->pid, flags, ret);
 	pr_debug("send: register sender task=%d flags %d ret(uipi_id)=%d\n",
 		 current->pid, flags, ret);
 
@@ -238,7 +252,8 @@ out_fdput:
  * sys_uintr_unregister_sender - Unregister user inter-processor interrupt sender.
  */
 SYSCALL_DEFINE2(uintr_unregister_sender, int, uintrfd, unsigned int, flags)
-{
+{	
+	if (Debug) printk("uintr_unregister_sender called\n");
 	struct uintr_sender_info *s_info;
 	struct uintrfd_ctx *uintrfd_ctx;
 	struct file *uintr_f;
@@ -275,7 +290,8 @@ SYSCALL_DEFINE2(uintr_unregister_sender, int, uintrfd, unsigned int, flags)
 		}
 	}
 	spin_unlock_irqrestore(&uintrfd_ctx->sender_lock, lock_flags);
-
+	if(Debug)printk("send: unregister sender uintrfd %d for task=%d ret %d\n",
+		 uintrfd, current->pid, ret);
 	pr_debug("send: unregister sender uintrfd %d for task=%d ret %d\n",
 		 uintrfd, current->pid, ret);
 
