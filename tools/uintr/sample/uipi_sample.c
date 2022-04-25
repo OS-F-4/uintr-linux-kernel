@@ -47,7 +47,7 @@ void *sender_thread(void *arg)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Sending IPI from sender thread\n");
+	printf("Sending IPI from sender thread index:%d \n", uipi_index);
 	_senduipi(uipi_index);
 
 	uintr_unregister_sender(uintr_fd, 0);
@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Do some other work */
-	while (!uintr_received)
-		usleep(1);
+	//while (!uintr_received)
+		usleep(10);
 
 	pthread_join(pt, NULL);
 	close(uintr_fd);
