@@ -867,7 +867,9 @@ static void *__raw_xsave_addr(struct xregs_state *xsave, int xfeature_nr)
 		WARN_ON_FPU(1);
 		return NULL;
 	}
-
+	if(XFEATURE_UINTR == xfeature_nr){  //  改
+		printk("the uintr xsave offset ===== 0x%x",xstate_comp_offsets[xfeature_nr]);
+	}
 	return (void *)xsave + xstate_comp_offsets[xfeature_nr];
 }
 /*

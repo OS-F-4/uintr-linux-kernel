@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2020, Intel Corporation.
+ *
+ * Sohil Mehta <sohil.mehta@intel.com>
+ */
 #define _GNU_SOURCE
 #include <pthread.h>
 #include <stdio.h>
@@ -28,6 +34,7 @@ void __attribute__ ((interrupt)) uintr_handler(struct __uintr_frame *ui_frame,
 	static const char print[] = "\t-- User Interrupt handler --\n";
 
 	write(STDOUT_FILENO, print, sizeof(print) - 1);
+	printf("- - - - user: now in the handler function\n");
 	uintr_received = 1;
 }
 
@@ -41,7 +48,7 @@ void *sender_thread(void *arg)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Sending IPI from sender thread\n");
+	printf("- - - - Sending IPI from sender thread index:%d \n", uipi_index);
 	_senduipi(uipi_index);
 
 	uintr_unregister_sender(uintr_fd, 0);
@@ -50,25 +57,24 @@ void *sender_thread(void *arg)
 }
 
 int main(int argc, char *argv[])
-{
+{	
+	printf("%p \n",main);
 	pthread_t pt;
 	int ret;
 
-	if (uintr_register_handler(uintr_handler, 0)) {
-		printf("Interrupt handler register error\n");
-		exit(EXIT_FAILURE);
-	}
+	int ret1 = uintr_register_handler(uintr_handler, 0);
+       	
+	printf("regeister returned %d\n",ret1);
+		// exit(EXIT_FAILURE);
 
 	ret = uintr_create_fd(0, 0);
-	if (ret < 0) {
-		printf("Interrupt vector allocation error\n");
-		exit(EXIT_FAILURE);
-	}
+	printf("create fd returned %d\n",ret);
+		// exit(EXIT_FAILURE);
 
 	uintr_fd = ret;
 
 	_stui();
-	printf("Receiver enabled interrupts\n");
+	printf("- - - - Receiver enabled interrupts\n");
 
 	if (pthread_create(&pt, NULL, &sender_thread, NULL)) {
 		printf("Error creating sender thread\n");
@@ -77,8 +83,9 @@ int main(int argc, char *argv[])
 
 	/* Do some other work */
 	while (!uintr_received)
-		usleep(1);
+		usleep(100);
 
+	printf("- - - - user receive uintr, joining thread\n");
 	pthread_join(pt, NULL);
 	close(uintr_fd);
 	uintr_unregister_handler(0);
