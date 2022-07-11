@@ -12,7 +12,7 @@
 #include <linux/syscalls.h>
 
 #include <asm/uintr.h>
-static bool Debug = true;
+static bool Debug = false;
 
 struct uintrfd_ctx {
 	struct uintr_receiver_info *r_info;

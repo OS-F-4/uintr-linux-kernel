@@ -673,11 +673,13 @@ int do_uintr_register_handler(u64 handler)
 		xsave = &fpu->state.xsave;
 		xsave->header.xfeatures |= XFEATURE_MASK_UINTR;
 		p = get_xsave_addr(&fpu->state.xsave, XFEATURE_UINTR);
+		printk("----uintr xsave addr is %px\n",p);
 		if (p) {
 			p->handler = handler;
 			p->upid_addr = (u64)ui_recv->upid_ctx->upid;
 			p->stack_adjust = 128;
 			p->uinv = UINTR_NOTIFICATION_VECTOR;
+			printk("the xsave addr is %p\n handler: 0x%llx | upid_addr: 0x%llx  | uif: %d\n", p, handler,p->upid_addr,p->uif_pad3); // 改
 		}
 	}
 
@@ -806,8 +808,11 @@ void switch_uintr_return(void)
 		 * carefully manage the race with the hardware if the UPID gets
 		 * updated after the read.
 		 */
-		if (READ_ONCE(upid->puir))
+		
+		if (READ_ONCE(upid->puir)){
+			printk("sending self ipi\n");
 			apic->send_IPI_self(UINTR_NOTIFICATION_VECTOR);
+		}
 	}
 }
 

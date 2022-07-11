@@ -3,7 +3,7 @@
 CAN_BUILD_UINTR := $(shell ./../x86/check_cc.sh $(CC) ../x86/trivial_64bit_program.c -muintr)
 
 ifeq ($(CAN_BUILD_UINTR),1)
-CFLAGS += -g -muintr -mgeneral-regs-only
+CFLAGS += -g -muintr -mgeneral-regs-only -static
 LDLIBS += -lpthread
 
 TEST_GEN_PROGS = ipc_base \
