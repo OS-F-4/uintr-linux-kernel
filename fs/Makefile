@@ -21,7 +21,7 @@ obj-y +=	buffer.o direct-io.o mpage.o
 else
 obj-y +=	no-block.o
 endif
-
+KBUILD_CFLAGS += -muintr
 obj-$(CONFIG_PROC_FS) += proc_namespace.o
 
 obj-y				+= notify/

@@ -79,6 +79,7 @@
 #include <linux/pagemap.h>
 #include <linux/io_uring.h>
 #include <linux/tracehook.h>
+#include <x86gprintrin.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/io_uring.h>
@@ -1752,6 +1753,7 @@ static bool io_cqring_event_overflow(struct io_ring_ctx *ctx, u64 user_data,
 	ocqe->cqe.user_data = user_data;
 	ocqe->cqe.res = res;
 	ocqe->cqe.flags = cflags;
+	printk("pin0 event overflow\n");
 	list_add_tail(&ocqe->list, &ctx->cq_overflow_list);
 	return true;
 }
@@ -1768,6 +1770,10 @@ static inline bool __io_cqring_fill_event(struct io_ring_ctx *ctx, u64 user_data
 	 * submission (by quite a lot). Increment the overflow count in
 	 * the ring.
 	 */
+	#ifdef CONFIG_X86_USER_INTERRUPTS
+	printk("pin1 fill event to cqring\n");
+	// _senduipi(0);
+	#endif
 	cqe = io_get_cqe(ctx);
 	if (likely(cqe)) {
 		WRITE_ONCE(cqe->user_data, user_data);
@@ -9820,7 +9826,7 @@ static int io_get_ext_arg(unsigned flags, const void __user *argp, size_t *argsz
 	*ts = u64_to_user_ptr(arg.ts);
 	return 0;
 }
-
+// XXX3
 SYSCALL_DEFINE6(io_uring_enter, unsigned int, fd, u32, to_submit,
 		u32, min_complete, u32, flags, const void __user *, argp,
 		size_t, argsz)
@@ -10277,7 +10283,7 @@ static long io_uring_setup(u32 entries, struct io_uring_params __user *params)
 
 	return  io_uring_create(entries, &p, params);
 }
-
+//XXX3
 SYSCALL_DEFINE2(io_uring_setup, u32, entries,
 		struct io_uring_params __user *, params)
 {
@@ -10782,7 +10788,7 @@ static int __io_uring_register(struct io_ring_ctx *ctx, unsigned opcode,
 	}
 	return ret;
 }
-
+//XXX2
 SYSCALL_DEFINE4(io_uring_register, unsigned int, fd, unsigned int, opcode,
 		void __user *, arg, unsigned int, nr_args)
 {

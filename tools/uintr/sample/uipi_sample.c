@@ -26,22 +26,20 @@ void __attribute__ ((interrupt)) uintr_handler(struct __uintr_frame *ui_frame,
 					       unsigned long long vector)
 {
 	static const char print[] = "\t-- User Interrupt handler --\n";
-
 	write(STDOUT_FILENO, print, sizeof(print) - 1);
+	printf("received vector: %lld\n",vector);
 	uintr_received = 1;
 }
 
 void *sender_thread(void *arg)
 {
-	int uipi_index;
-
-	uipi_index = uintr_register_sender(uintr_fd, 0);
+	int uipi_index = uintr_register_sender(uintr_fd, 0);
 	if (uipi_index < 0) {
 		printf("Sender register error\n");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Sending IPI from sender thread\n");
+	printf("Sending IPI from sender thread index: %d\n", uipi_index);
 	_senduipi(uipi_index);
 
 	uintr_unregister_sender(uintr_fd, 0);
@@ -60,12 +58,15 @@ int main(int argc, char *argv[])
 	}
 
 	ret = uintr_create_fd(0, 0);
-	if (ret < 0) {
+	printf("the fd ret is %d \n", ret);
+	int ret2 = uintr_create_fd(1, 0);
+	printf("the fd ret2 is %d\n", ret2);
+	if (ret < 0 || ret2 < 0) {
 		printf("Interrupt vector allocation error\n");
 		exit(EXIT_FAILURE);
 	}
 
-	uintr_fd = ret;
+	uintr_fd = ret2;
 
 	_stui();
 	printf("Receiver enabled interrupts\n");
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
 	pthread_join(pt, NULL);
 	close(uintr_fd);
 	uintr_unregister_handler(0);
-
+	_clui();
 	printf("Success\n");
 	exit(EXIT_SUCCESS);
 }
