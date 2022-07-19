@@ -459,6 +459,7 @@ struct io_ring_ctx {
 		struct list_head		tctx_list;
 		struct completion		ref_comp;
 	};
+	int uipi_index;
 };
 
 struct io_uring_task {
@@ -10270,6 +10271,7 @@ static long io_uring_setup(u32 entries, struct io_uring_params __user *params)
 
 	if (copy_from_user(&p, params, sizeof(p)))
 		return -EFAULT;
+	// check params, then setup
 	for (i = 0; i < ARRAY_SIZE(p.resv); i++) {
 		if (p.resv[i])
 			return -EINVAL;

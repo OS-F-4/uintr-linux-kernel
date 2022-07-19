@@ -269,7 +269,8 @@ struct io_uring_params {
 	__u32 sq_thread_idle;
 	__u32 features;
 	__u32 wq_fd;
-	__u32 resv[3];
+	int   uipi_index;
+	__u32 resv[2];
 	struct io_sqring_offsets sq_off;
 	struct io_cqring_offsets cq_off;
 };
