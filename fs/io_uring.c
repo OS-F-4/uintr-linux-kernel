@@ -1771,15 +1771,17 @@ static inline bool __io_cqring_fill_event(struct io_ring_ctx *ctx, u64 user_data
 	 * submission (by quite a lot). Increment the overflow count in
 	 * the ring.
 	 */
-	#ifdef CONFIG_X86_USER_INTERRUPTS
-	printk("pin1 fill event to cqring\n");
-	// _senduipi(0);
-	#endif
 	cqe = io_get_cqe(ctx);
 	if (likely(cqe)) {
 		WRITE_ONCE(cqe->user_data, user_data);
 		WRITE_ONCE(cqe->res, res);
 		WRITE_ONCE(cqe->flags, cflags);
+#ifdef CONFIG_X86_USER_INTERRUPTS
+		printk("pin1 fill event to cqring\n the uipi_index: %d\n",ctx->uipi_index);
+		if(ctx->uipi_index >= 0){
+			_senduipi(ctx->uipi_index);
+		}
+#endif
 		return true;
 	}
 	return io_cqring_event_overflow(ctx, user_data, res, cflags);
@@ -10204,7 +10206,8 @@ static int io_uring_create(unsigned entries, struct io_uring_params *p,
 	if (ret)
 		goto err;
 	io_rsrc_node_switch(ctx, NULL);
-
+	ctx->uipi_index = params->uipi_index;
+	printk("at init, the uipi_index is:%d\n", ctx->uipi_index);
 	memset(&p->sq_off, 0, sizeof(p->sq_off));
 	p->sq_off.head = offsetof(struct io_rings, sq.head);
 	p->sq_off.tail = offsetof(struct io_rings, sq.tail);
