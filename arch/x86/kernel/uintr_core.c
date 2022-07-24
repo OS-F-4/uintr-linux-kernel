@@ -336,7 +336,8 @@ static int init_uitt(void)
 
 	fpregs_lock();
 
-	if (fpregs_state_valid(fpu, smp_processor_id())) {
+	if (true || fpregs_state_valid(fpu, smp_processor_id())) {
+		printk("using msr\n");
 		wrmsrl(MSR_IA32_UINTR_TT, (u64)ui_send->uitt_ctx->uitt | 1);
 		/* Modify only the relevant bits of the MISC MSR */
 		rdmsrl(MSR_IA32_UINTR_MISC, msr64);
@@ -344,6 +345,7 @@ static int init_uitt(void)
 		msr64 |= UINTR_MAX_UITT_NR;
 		wrmsrl(MSR_IA32_UINTR_MISC, msr64);
 	} else {
+		printk("using xsave\n");
 		struct xregs_state *xsave;
 		struct uintr_state *p;
 
@@ -473,6 +475,7 @@ int do_uintr_register_sender(struct uintr_receiver_info *r_info,
 
 	spin_lock_irqsave(&ui_send->uitt_ctx->uitt_lock, flags);
 	uitte = &ui_send->uitt_ctx->uitt[entry];
+
 	pr_debug("send: sender=%d receiver=%d UITTE entry %d address %px\n",
 		 current->pid, r_info->upid_ctx->task->pid, entry, uitte);
 
@@ -480,6 +483,8 @@ int do_uintr_register_sender(struct uintr_receiver_info *r_info,
 	uitte->target_upid_addr = (u64)r_info->upid_ctx->upid;
 	uitte->valid = 1;
 	spin_unlock_irqrestore(&ui_send->uitt_ctx->uitt_lock, flags);
+	printk("send: sender=%d receiver=%d UITTE entry %d address %px upid addr 0x%lx\n",
+		 current->pid, r_info->upid_ctx->task->pid, entry, uitte, uitte->target_upid_addr);
 
 	s_info->r_upid_ctx = get_upid_ref(r_info->upid_ctx);
 	s_info->uitt_ctx = get_uitt_ref(ui_send->uitt_ctx);
@@ -650,6 +655,7 @@ int do_uintr_register_handler(u64 handler)
 
 	cpu = smp_processor_id();
 	upid = ui_recv->upid_ctx->upid;
+	printk("upid addr: 0x%px\n", upid);
 	upid->nc.nv = UINTR_NOTIFICATION_VECTOR;
 	upid->nc.ndst = cpu_to_ndst(cpu);
 

@@ -12,7 +12,7 @@
 #include <linux/syscalls.h>
 
 #include <asm/uintr.h>
-static bool Debug = false;
+static bool Debug = true;
 
 struct uintrfd_ctx {
 	struct uintr_receiver_info *r_info;
@@ -56,7 +56,7 @@ static int uintrfd_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static const struct file_operations uintrfd_fops = {
+const struct file_operations uintrfd_fops = {
 #ifdef CONFIG_PROC_FS
 	.show_fdinfo	= uintrfd_show_fdinfo,
 #endif
@@ -200,7 +200,7 @@ SYSCALL_DEFINE2(uintr_register_sender, int, uintrfd, unsigned int, flags)
 	uintr_f = f.file;
 	if (!uintr_f)
 		return -EBADF;
-
+	printk("0x%lx   0x%lx  0x%lx   0x%lx \n", uintr_f->f_op->release, uintr_f->f_op->llseek, uintr_f->f_op ,&uintrfd_fops);
 	if (uintr_f->f_op != &uintrfd_fops) {
 		ret = -EOPNOTSUPP;
 		goto out_fdput;

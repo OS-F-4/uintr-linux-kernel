@@ -294,6 +294,8 @@ struct io_sq_data {
 
 	unsigned long		state;
 	struct completion	exited;
+	struct fd uintr_f;
+	struct io_ring_ctx *creating_ctx;
 };
 
 #define IO_COMPL_BATCH			32
@@ -7352,14 +7354,104 @@ static bool io_sqd_handle_event(struct io_sq_data *sqd)
 	return did_sig || test_bit(IO_SQ_THREAD_SHOULD_STOP, &sqd->state);
 }
 
-static int io_sq_thread(void *data)
+
+#include <asm/uintr.h>
+
+struct uintrfd_ctx {
+	struct uintr_receiver_info *r_info;
+	/* Protect sender_list */
+	spinlock_t sender_lock;
+	struct list_head sender_list;
+};
+
+
+
+static int uintr_register_sender(struct fd f, unsigned int flags)
 {
+	printk("uintr_register_sender called\n");
+	struct uintr_sender_info *s_info;
+	struct uintrfd_ctx *uintrfd_ctx;
+	unsigned long lock_flags;
+	struct file *uintr_f;
+	int ret = 0;
+	if (!uintr_arch_enabled())
+		return -EOPNOTSUPP;
+
+	if (flags)
+		return -EINVAL;
+	uintr_f = f.file;
+	if (!uintr_f)
+		return -EBADF;
+
+	if (uintr_f->f_op != &uintrfd_fops) {
+		printk("??\n");
+		printk("0x%px   0x%px  0x%px  0x%px\n", uintr_f->f_op->release, uintr_f->f_op->llseek,uintr_f->f_op,&uintrfd_fops);
+		ret = -EOPNOTSUPP;
+		goto out_fdput;
+	}
+
+	uintrfd_ctx = (struct uintrfd_ctx *)uintr_f->private_data;
+
+	spin_lock_irqsave(&uintrfd_ctx->sender_lock, lock_flags);
+	list_for_each_entry(s_info, &uintrfd_ctx->sender_list, node) {
+		if (s_info->task == current) {
+			ret = -EISCONN;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&uintrfd_ctx->sender_lock, lock_flags);
+
+	if (ret)
+		goto out_fdput;
+
+	s_info = kzalloc(sizeof(*s_info), GFP_KERNEL);
+	if (!s_info) {
+		ret = -ENOMEM;
+		goto out_fdput;
+	}
+
+	ret = do_uintr_register_sender(uintrfd_ctx->r_info, s_info);
+	if (ret) {
+		kfree(s_info);
+		goto out_fdput;
+	}
+
+	spin_lock_irqsave(&uintrfd_ctx->sender_lock, lock_flags);
+	list_add(&s_info->node, &uintrfd_ctx->sender_list);
+	spin_unlock_irqrestore(&uintrfd_ctx->sender_lock, lock_flags);
+
+	ret = s_info->uitt_index;
+
+out_fdput:
+	printk("static send: register sender task=%d flags %d ret(uipi_id)=%d\n",
+		 current->pid, flags, ret);
+	pr_debug("send: register sender task=%d flags %d ret(uipi_id)=%d\n",
+		 current->pid, flags, ret);
+
+	fdput(f);
+	return ret;
+}
+
+
+
+static int io_sq_thread(void *data)
+{	
+	printk("io_sq_thread\n");
 	struct io_sq_data *sqd = data;
 	struct io_ring_ctx *ctx;
 	unsigned long timeout = 0;
 	char buf[TASK_COMM_LEN];
 	DEFINE_WAIT(wait);
 
+	
+	if(sqd->creating_ctx){
+		int ret = uintr_register_sender(sqd->uintr_f, 0);
+		if(ret < 0){
+			printk("error when register sender\n");
+		}
+		sqd->creating_ctx->uipi_index = ret;
+	}
+		
 	snprintf(buf, sizeof(buf), "iou-sqp-%d", sqd->task_pid);
 	set_task_comm(current, buf);
 
@@ -8569,7 +8661,17 @@ static int io_sq_offload_create(struct io_ring_ctx *ctx,
 
 		sqd->task_pid = current->pid;
 		sqd->task_tgid = current->tgid;
+		printk("pin1 creating thread\n");
+		if(p->uintr_fd >= 3){
+			struct fd f = fdget(p->uintr_fd);
+			sqd->uintr_f = f;
+			sqd->creating_ctx = ctx;
+		}else{
+			sqd->creating_ctx = 0;
+		}
+		
 		tsk = create_io_thread(io_sq_thread, sqd, NUMA_NO_NODE);
+		printk("pin2 after create\n");
 		if (IS_ERR(tsk)) {
 			ret = PTR_ERR(tsk);
 			goto err_sqpoll;
@@ -10197,7 +10299,9 @@ static int io_uring_create(unsigned entries, struct io_uring_params *p,
 	ret = io_allocate_scq_urings(ctx, p);
 	if (ret)
 		goto err;
-
+	if(p->uintr_fd < 3){
+		ctx->uipi_index = -1;
+	}
 	ret = io_sq_offload_create(ctx, p);
 	if (ret)
 		goto err;

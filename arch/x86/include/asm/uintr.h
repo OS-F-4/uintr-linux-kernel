@@ -63,6 +63,7 @@ void switch_uintr_return(void);
 
 int uintr_receiver_wait(void);
 void uintr_wake_up_process(void);
+extern const struct file_operations uintrfd_fops;
 
 #else /* !CONFIG_X86_USER_INTERRUPTS */
 
