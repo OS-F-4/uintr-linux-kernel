@@ -10299,9 +10299,8 @@ static int io_uring_create(unsigned entries, struct io_uring_params *p,
 	ret = io_allocate_scq_urings(ctx, p);
 	if (ret)
 		goto err;
-	if(p->uintr_fd < 3){
-		ctx->uipi_index = -1;
-	}
+
+	ctx->uipi_index = -1;
 	ret = io_sq_offload_create(ctx, p);
 	if (ret)
 		goto err;
@@ -10310,8 +10309,6 @@ static int io_uring_create(unsigned entries, struct io_uring_params *p,
 	if (ret)
 		goto err;
 	io_rsrc_node_switch(ctx, NULL);
-	ctx->uipi_index = params->uipi_index;
-	printk("at init, the uipi_index is:%d\n", ctx->uipi_index);
 	memset(&p->sq_off, 0, sizeof(p->sq_off));
 	p->sq_off.head = offsetof(struct io_rings, sq.head);
 	p->sq_off.tail = offsetof(struct io_rings, sq.tail);
