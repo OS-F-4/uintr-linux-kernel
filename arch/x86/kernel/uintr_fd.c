@@ -200,7 +200,7 @@ SYSCALL_DEFINE2(uintr_register_sender, int, uintrfd, unsigned int, flags)
 	uintr_f = f.file;
 	if (!uintr_f)
 		return -EBADF;
-	printk("0x%lx   0x%lx  0x%lx   0x%lx \n", uintr_f->f_op->release, uintr_f->f_op->llseek, uintr_f->f_op ,&uintrfd_fops);
+	// printk("0x%lx   0x%lx  0x%lx   0x%lx \n", uintr_f->f_op->release, uintr_f->f_op->llseek, uintr_f->f_op ,&uintrfd_fops);
 	if (uintr_f->f_op != &uintrfd_fops) {
 		ret = -EOPNOTSUPP;
 		goto out_fdput;

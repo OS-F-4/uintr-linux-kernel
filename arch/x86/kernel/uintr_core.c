@@ -336,7 +336,7 @@ static int init_uitt(void)
 
 	fpregs_lock();
 
-	if (true || fpregs_state_valid(fpu, smp_processor_id())) {
+	if (fpregs_state_valid(fpu, smp_processor_id())) {
 		printk("using msr\n");
 		wrmsrl(MSR_IA32_UINTR_TT, (u64)ui_send->uitt_ctx->uitt | 1);
 		/* Modify only the relevant bits of the MISC MSR */
@@ -483,8 +483,8 @@ int do_uintr_register_sender(struct uintr_receiver_info *r_info,
 	uitte->target_upid_addr = (u64)r_info->upid_ctx->upid;
 	uitte->valid = 1;
 	spin_unlock_irqrestore(&ui_send->uitt_ctx->uitt_lock, flags);
-	printk("send: sender=%d receiver=%d UITTE entry %d address %px upid addr 0x%lx\n",
-		 current->pid, r_info->upid_ctx->task->pid, entry, uitte, uitte->target_upid_addr);
+	// printk("send: sender=%d receiver=%d UITTE entry %d address %px upid addr 0x%lx\n",
+		//  current->pid, r_info->upid_ctx->task->pid, entry, uitte, uitte->target_upid_addr);
 
 	s_info->r_upid_ctx = get_upid_ref(r_info->upid_ctx);
 	s_info->uitt_ctx = get_uitt_ref(ui_send->uitt_ctx);
@@ -654,8 +654,7 @@ int do_uintr_register_handler(u64 handler)
 	fpregs_lock();
 
 	cpu = smp_processor_id();
-	upid = ui_recv->upid_ctx->upid;
-	printk("upid addr: 0x%px\n", upid);
+	upid = ui_recv->upid_ctx->upid;	
 	upid->nc.nv = UINTR_NOTIFICATION_VECTOR;
 	upid->nc.ndst = cpu_to_ndst(cpu);
 
@@ -679,13 +678,13 @@ int do_uintr_register_handler(u64 handler)
 		xsave = &fpu->state.xsave;
 		xsave->header.xfeatures |= XFEATURE_MASK_UINTR;
 		p = get_xsave_addr(&fpu->state.xsave, XFEATURE_UINTR);
-		printk("----uintr xsave addr is %px\n",p);
+		// printk("----uintr xsave addr is %px\n",p);
 		if (p) {
 			p->handler = handler;
 			p->upid_addr = (u64)ui_recv->upid_ctx->upid;
 			p->stack_adjust = 128;
 			p->uinv = UINTR_NOTIFICATION_VECTOR;
-			printk("the xsave addr is %p\n handler: 0x%llx | upid_addr: 0x%llx  | uif: %d\n", p, handler,p->upid_addr,p->uif_pad3); // 改
+			// printk("the xsave addr is %p\n handler: 0x%llx | upid_addr: 0x%llx  | uif: %d\n", p, handler,p->upid_addr,p->uif_pad3); // 改
 		}
 	}
 

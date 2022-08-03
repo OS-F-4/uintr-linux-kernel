@@ -1779,7 +1779,7 @@ static inline bool __io_cqring_fill_event(struct io_ring_ctx *ctx, u64 user_data
 		WRITE_ONCE(cqe->res, res);
 		WRITE_ONCE(cqe->flags, cflags);
 #ifdef CONFIG_X86_USER_INTERRUPTS
-		printk("pin1 fill event to cqring\n the uipi_index: %d\n",ctx->uipi_index);
+		// printk("pin1 fill event to cqring\n the uipi_index: %d\n",ctx->uipi_index);
 		if(ctx->uipi_index >= 0){
 			_senduipi(ctx->uipi_index);
 		}
@@ -7384,7 +7384,6 @@ static int uintr_register_sender(struct fd f, unsigned int flags)
 		return -EBADF;
 
 	if (uintr_f->f_op != &uintrfd_fops) {
-		printk("??\n");
 		printk("0x%px   0x%px  0x%px  0x%px\n", uintr_f->f_op->release, uintr_f->f_op->llseek,uintr_f->f_op,&uintrfd_fops);
 		ret = -EOPNOTSUPP;
 		goto out_fdput;
@@ -7436,7 +7435,6 @@ out_fdput:
 
 static int io_sq_thread(void *data)
 {	
-	printk("io_sq_thread\n");
 	struct io_sq_data *sqd = data;
 	struct io_ring_ctx *ctx;
 	unsigned long timeout = 0;
@@ -8661,7 +8659,6 @@ static int io_sq_offload_create(struct io_ring_ctx *ctx,
 
 		sqd->task_pid = current->pid;
 		sqd->task_tgid = current->tgid;
-		printk("pin1 creating thread\n");
 		if(p->uintr_fd >= 3){
 			struct fd f = fdget(p->uintr_fd);
 			sqd->uintr_f = f;
@@ -8671,7 +8668,6 @@ static int io_sq_offload_create(struct io_ring_ctx *ctx,
 		}
 		
 		tsk = create_io_thread(io_sq_thread, sqd, NUMA_NO_NODE);
-		printk("pin2 after create\n");
 		if (IS_ERR(tsk)) {
 			ret = PTR_ERR(tsk);
 			goto err_sqpoll;
