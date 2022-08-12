@@ -43,7 +43,7 @@ void *sender_thread(void *arg)
 
 	uipi_index = uintr_register_sender(uintr_fd, 0);
 	if (uipi_index < 0) {
-		printf("Sender register error\n");
+		printf("Sender register error%d\n", uipi_index);
 		exit(EXIT_FAILURE);
 	}
 

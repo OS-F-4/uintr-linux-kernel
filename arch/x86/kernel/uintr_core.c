@@ -14,7 +14,7 @@
 #include <linux/slab.h>
 #include <linux/task_work.h>
 #include <linux/uaccess.h>
-
+#include <asm/fpu/internal.h>
 #include <asm/apic.h>
 #include <asm/fpu/api.h>
 #include <asm/irq_vectors.h>
@@ -632,7 +632,7 @@ int do_uintr_register_handler(u64 handler)
 	struct uintr_receiver *ui_recv;
 	struct uintr_upid *upid;
 	struct task_struct *t = current;
-	void *xstate;
+	struct fpu *fpu = &t->thread.fpu;
 	u64 misc_msr;
 	int cpu;
 
@@ -651,32 +651,51 @@ int do_uintr_register_handler(u64 handler)
 	}
 
 	/*
+	 * TODO: Evaluate usage of fpregs_lock() and get_xsave_addr(). Bugs
+	 * have been reported recently for PASID and WRPKRU.
+	 *
 	 * UPID and ui_recv will be referenced during context switch. Need to
 	 * disable preemption while modifying the MSRs, UPID and ui_recv thread
 	 * struct.
 	 */
-	xstate = start_update_xsave_msrs(XFEATURE_UINTR);
+	fpregs_lock();
 
 	cpu = smp_processor_id();
-	upid = ui_recv->upid_ctx->upid;
+	upid = ui_recv->upid_ctx->upid;	
 	upid->nc.nv = UINTR_NOTIFICATION_VECTOR;
 	upid->nc.ndst = cpu_to_ndst(cpu);
 
 	t->thread.ui_recv = ui_recv;
 
+	if (fpregs_state_valid(fpu, cpu)) {
+		wrmsrl(MSR_IA32_UINTR_HANDLER, handler);
+		wrmsrl(MSR_IA32_UINTR_PD, (u64)ui_recv->upid_ctx->upid);
 
-	xsave_wrmsrl(xstate, MSR_IA32_UINTR_HANDLER, handler);
-	xsave_wrmsrl(xstate, MSR_IA32_UINTR_PD, (u64)ui_recv->upid_ctx->upid);
+		/* Set value as size of ABI redzone */
+		wrmsrl(MSR_IA32_UINTR_STACKADJUST, 128);
 
-	/* Set value as size of ABI redzone */
-	xsave_wrmsrl(xstate, MSR_IA32_UINTR_STACKADJUST, 128);
+		/* Modify only the relevant bits of the MISC MSR */
+		rdmsrl(MSR_IA32_UINTR_MISC, misc_msr);
+		misc_msr |= (u64)UINTR_NOTIFICATION_VECTOR << 32;
+		wrmsrl(MSR_IA32_UINTR_MISC, misc_msr);
+	} else {
+		struct xregs_state *xsave;
+		struct uintr_state *p;
 
-	/* Modify only the relevant bits of the MISC MSR */
-	xsave_rdmsrl(xstate, MSR_IA32_UINTR_MISC, &misc_msr);
-	misc_msr |= (u64)UINTR_NOTIFICATION_VECTOR << 32;
-	xsave_wrmsrl(xstate, MSR_IA32_UINTR_MISC, misc_msr);
+		xsave = &fpu->fpstate->regs.xsave;
+		xsave->header.xfeatures |= XFEATURE_MASK_UINTR;
+		p = get_xsave_addr(&fpu->fpstate->regs.xsave, XFEATURE_UINTR);
+		// printk("----uintr xsave addr is %px\n",p);
+		if (p) {
+			p->handler = handler;
+			p->upid_addr = (u64)ui_recv->upid_ctx->upid;
+			p->stack_adjust = 128;
+			p->misc.uinv = UINTR_NOTIFICATION_VECTOR;
+			// printk("the xsave addr is %p\n handler: 0x%llx | upid_addr: 0x%llx  | uif: %d\n", p, handler,p->upid_addr,p->uif_pad3); // 改
+		}
+	}
 
-	end_update_xsave_msrs();
+	fpregs_unlock();
 
 	pr_debug("recv: task=%d register handler=%llx upid %px\n",
 		 t->pid, handler, upid);
