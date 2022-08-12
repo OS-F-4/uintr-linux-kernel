@@ -1779,7 +1779,7 @@ static inline bool __io_cqring_fill_event(struct io_ring_ctx *ctx, u64 user_data
 		WRITE_ONCE(cqe->res, res);
 		WRITE_ONCE(cqe->flags, cflags);
 #ifdef CONFIG_X86_USER_INTERRUPTS
-		// printk("pin1 fill event to cqring\n the uipi_index: %d\n",ctx->uipi_index);
+		printk("fill event to cqring\n the uipi_index: %d\n",ctx->uipi_index);
 		if(ctx->uipi_index >= 0){
 			_senduipi(ctx->uipi_index);
 		}

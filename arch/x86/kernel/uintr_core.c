@@ -336,7 +336,7 @@ static int init_uitt(void)
 
 	fpregs_lock();
 
-	if (fpregs_state_valid(fpu, smp_processor_id())) {
+	if (1 || fpregs_state_valid(fpu, smp_processor_id())) {
 		printk("using msr\n");
 		wrmsrl(MSR_IA32_UINTR_TT, (u64)ui_send->uitt_ctx->uitt | 1);
 		/* Modify only the relevant bits of the MISC MSR */
